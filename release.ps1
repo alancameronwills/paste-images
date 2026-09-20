@@ -52,7 +52,13 @@ if (-not (Test-Path $zipPath)) {
 }
 
 # Release notes: commit subjects since the previous tag, skipping bump/release noise.
-$prevTag = git describe --tags --abbrev=0 HEAD~1 2>$null
+# (No stderr redirection here: on Windows PowerShell 5.1, redirecting a native
+# command's stderr - even to $null - turns "no previous tag" into a terminating
+# error under $ErrorActionPreference = 'Stop'.)
+$prevTag = git describe --tags --abbrev=0 HEAD~1
+if ($LASTEXITCODE -ne 0) {
+    $prevTag = $null
+}
 if ($prevTag) {
     $notesLines = git log "$prevTag..HEAD" --pretty=format:'- %s' |
         Where-Object { $_ -notmatch '^- bump version$' -and $_ -notmatch '^- Release ' }
