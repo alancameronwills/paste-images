@@ -4,12 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A WordPress plugin (four files, no build tooling, no package manager, no tests) that adds clipboard-paste-to-upload to every WordPress media uploader — the standalone "Upload New Media" screen (`media-new.php`) and any Backbone `wp.media()` modal (post editor, featured image, galleries, and any other plugin's own picker, e.g. a custom `wp.media({...})` call).
+A WordPress plugin (no build tooling, no package manager, no tests) that adds clipboard-paste-to-upload to every WordPress media uploader — the standalone "Upload New Media" screen (`media-new.php`) and any Backbone `wp.media()` modal (post editor, featured image, galleries, and any other plugin's own picker, e.g. a custom `wp.media({...})` call). Published at https://github.com/alancameronwills/paste-images and self-updates from there (see below).
 
-- `paste-images.php` — plugin bootstrap, asset enqueueing, and the AJAX upload handler.
+- `paste-images.php` — plugin bootstrap, asset enqueueing, the AJAX upload handler, and the update-checker wiring.
 - `assets/paste-images.js` — detects the uploader UI, adds the "or paste an image" hint, listens for `paste`, and uploads/integrates the result.
 - `assets/paste-images.css` — minor styling for the hint/feedback text.
 - `readme.txt` — standard WordPress.org-style plugin readme.
+- `plugin-update-checker/` — vendored third-party library ([YahnisElsts/plugin-update-checker](https://github.com/YahnisElsts/plugin-update-checker)) that powers auto-updates from GitHub releases. Not written by this project; don't hand-edit it — replace the whole folder to upgrade it (copied verbatim here from the sibling `gigiau-events-posters` plugin, which uses the same version).
+- `build-release.ps1` / `release.ps1` — build a release zip and cut a tagged GitHub release with it attached.
 
 ## Commands
 
@@ -51,3 +53,11 @@ Because the modal's DOM is created/destroyed dynamically (not present at page lo
 After a successful upload, `registerAttachment()` creates the Backbone model (`wp.media.model.Attachment.create()`) and adds it to `wp.Uploader.queue` — the same shared collection core's real plupload flow feeds into. This is deliberate: the active frame state already listens for `add` events on that queue (`Library.prototype.uploading` in `wp-includes/js/media-views.js`) and, on its own, switches the modal from the Upload Files tab to Media Library and adds the new attachment to the current selection. Do not reimplement tab-switching or selection-add logic manually — earlier versions of this plugin did (`state.get('library').unshift(...)`, manual `selection.add()`), and it only partially matched core's real behavior. Routing through `wp.Uploader.queue` gets full parity with a normal browse-upload for free, in both single- and multi-select frames.
 
 This whole integration layer touches undocumented `wp.media`/`wp.Uploader` internals (there is no public API for "I uploaded something out-of-band, please integrate it"). It has needed a live-browser fix at every WordPress core version boundary encountered so far; treat any change here as needing manual verification in an actual modal, not just a syntax check.
+
+### Auto-updates from GitHub releases
+
+`paste-images.php` builds a Plugin Update Checker instance pointed at `https://github.com/alancameronwills/paste-images/`, with `enableReleaseAssets()` — meaning it looks for a zip **attached to a GitHub release**, not just a tag or the repo's default branch zipball. A release with no attached asset will not be offered as an update. `release.ps1` builds that zip (via `build-release.ps1`) and creates the release with `gh release create ... $zipPath`; use it rather than tagging/releasing by hand.
+
+The two version numbers (docblock `Version:` header and `PASTE_IMAGES_VERSION` constant) must both be bumped, committed, and pushed *before* running `release.ps1` — it reads the header to name the tag/zip and refuses to run if the working tree is dirty or local `HEAD` hasn't been pushed.
+
+`build-release.ps1`'s exclude list drops `CLAUDE.md`, `README.md`, and the release scripts themselves from the shipped zip, but deliberately keeps `plugin-update-checker/` (it's a runtime dependency, not dev tooling).

@@ -30,11 +30,13 @@ A pasted image is uploaded through WordPress's normal upload pipeline, so it bec
 2. Activate **Paste Images** on the Plugins screen.
 3. Open any media uploader and paste an image.
 
+Once installed, updates are automatic: WordPress checks GitHub releases at [alancameronwills/paste-images](https://github.com/alancameronwills/paste-images) and offers the update on the Plugins screen like any other plugin — see [Releasing](#releasing) below.
+
 ## Development
 
-This is a small, dependency-free plugin — plain PHP and vanilla JS, no build step or package manager.
+This is a small plugin — plain PHP and vanilla JS, no build step or package manager for the plugin itself. It vendors one third-party library, [Plugin Update Checker](https://github.com/YahnisElsts/plugin-update-checker) (`plugin-update-checker/`), to power GitHub-based auto-updates.
 
-- `paste-images.php` — enqueues the assets and handles the upload via AJAX.
+- `paste-images.php` — enqueues the assets, handles the upload via AJAX, and wires up the update checker.
 - `assets/paste-images.js` — detects the uploader UI, shows the paste hint, and handles the paste event.
 - `assets/paste-images.css` — minor styling for the hint/feedback text.
 
@@ -47,6 +49,24 @@ php -l paste-images.php
 There's no automated test suite; changes are verified by hand in a browser, since the interesting logic is DOM/JavaScript integration with WordPress's media modal rather than pure PHP.
 
 See `CLAUDE.md` for a deeper look at the internals (the two different uploader markups WordPress ships, and how uploads are integrated back into the Backbone media frame).
+
+## Releasing
+
+Version numbers live in two places that must be bumped together: the `Version:` header in `paste-images.php`'s docblock and the `PASTE_IMAGES_VERSION` constant just below it (the constant drives cache-busting for the enqueued assets).
+
+After bumping the version, committing, and pushing to `main`:
+
+```
+.\release.ps1
+```
+
+This builds `build/paste-images-<version>.zip` (via `build-release.ps1`), tags `v<version>`, pushes the tag, and creates a GitHub release with the zip attached using `gh`. The update checker is configured to read release **assets**, not just tags, so the zip must be attached — a bare tag/release with no asset won't be picked up.
+
+Sites on a shared/busy host may hit GitHub's unauthenticated API rate limit (60 requests/hour per IP) and see `puc-github-http-error` notices. Fix by adding a personal access token (no scopes needed for a public repo) to that site's `wp-config.php`:
+
+```php
+define( 'PASTE_IMAGES_GITHUB_TOKEN', '...' );
+```
 
 ## License
 

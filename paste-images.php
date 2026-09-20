@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Paste Images
  * Description: Lets you paste images (screenshots, "Copy image" from a browser, or a file copied from your OS) straight into the WordPress media uploader, right next to the Select Files button.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Requires at least: 5.3
  * Requires PHP: 7.0
  * Author: Alan Cameron Wills
@@ -15,8 +15,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PASTE_IMAGES_VERSION', '1.4.0' );
+define( 'PASTE_IMAGES_VERSION', '1.5.0' );
 define( 'PASTE_IMAGES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+// Auto-update from GitHub releases.
+require __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
+$paste_images_update_checker = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+	'https://github.com/alancameronwills/paste-images/',
+	__FILE__,
+	'paste-images'
+);
+$paste_images_update_checker->setBranch( 'main' );
+$paste_images_update_checker->getVcsApi()->enableReleaseAssets();
+if ( defined( 'PASTE_IMAGES_GITHUB_TOKEN' ) && PASTE_IMAGES_GITHUB_TOKEN ) {
+	// Raises the GitHub API rate limit from 60/hr (shared per-IP) to 5000/hr;
+	// avoids "puc-github-http-error" 403s on hosts sharing a busy IP.
+	// Set define('PASTE_IMAGES_GITHUB_TOKEN', '...'); in wp-config.php - a
+	// public-repo token needs no scopes.
+	$paste_images_update_checker->setAuthentication( PASTE_IMAGES_GITHUB_TOKEN );
+}
 
 /**
  * Enqueue our assets whenever the media uploader itself is enqueued
