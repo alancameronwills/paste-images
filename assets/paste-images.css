@@ -1,0 +1,14 @@
+.paste-images-hint {
+	margin-top: 8px;
+	color: #646970;
+	font-style: italic;
+}
+
+.paste-images-feedback {
+	margin-top: 8px;
+	font-weight: 600;
+}
+
+.paste-images-feedback.paste-images-error {
+	color: #d63638;
+}
